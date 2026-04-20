@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank → Xero Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --border: #e2e0d8;
+    --border-mid: #cccac0;
+    --text: #1a1916;
+    --muted: #7a7870;
+    --accent: #1a6ef5;
+    --accent-light: #e8f0fe;
+    --teal: #1ab4d7;
+    --teal-light: #e8f9fd;
+    --danger: #d03b2f;
+    --danger-light: #fdf0ee;
+    --success: #1a7a4a;
+    --success-light: #eaf5ef;
+    --warn-bg: #fffbee;
+    --warn-border: #f0d060;
+    --warn-text: #6b5000;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2.5rem 1rem 5rem;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+
+  header { margin-bottom: 2rem; }
+  .header-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border-mid);
+    border-radius: 4px;
+    padding: 3px 8px;
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  h1 span { font-weight: 500; }
+  .header-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+  .card-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-body { padding: 1.5rem 1.25rem; }
+
+  /* Format badge shown after detection */
+  .format-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .format-badge.armalytix { background: var(--teal-light); color: #0a7a9a; }
+  .format-badge.dext      { background: var(--accent-light); color: #1050b0; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border-mid);
+    border-radius: 10px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--bg);
+  }
+  .drop-zone:hover, .drop-zone.over { border-color: var(--accent); background: var(--accent-light); }
+  .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-icon {
+    width: 44px; height: 44px; margin: 0 auto 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .drop-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .drop-sub { font-size: 12px; color: var(--muted); }
+
+  /* Supported formats hint */
+  .formats-hint {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .fmt-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    background: var(--surface);
+  }
+  .fmt-pill span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+  .fmt-pill .dot-teal { background: var(--teal); }
+  .fmt-pill .dot-blue { background: var(--accent); }
+
+  /* Learn from Xero */
+  .learn-section {
+    margin-top: 1.25rem;
+    border: 1px solid #c8e8f4;
+    border-radius: 10px;
+    background: var(--teal-light);
+    padding: 14px 16px;
+  }
+  .learn-header { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+  .learn-title { font-size: 13px; font-weight: 500; color: #0a6a8a; }
+  .learn-sub { font-size: 12px; color: #4a7a8a; margin-bottom: 10px; }
+  .learn-drop {
+    border: 1.5px dashed #8acfdf; border-radius: 8px; padding: 10px 16px;
+    text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    background: #fff; position: relative; font-size: 12px; color: var(--muted);
+  }
+  .learn-drop:hover, .learn-drop.over { border-color: var(--teal); background: #f0fbfd; color: #0a6a8a; }
+  .learn-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .learn-msg { font-size: 12px; margin-top: 8px; display: none; }
+  .learn-msg.ok { color: var(--success); }
+  .learn-msg.err { color: var(--danger); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  .stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .stat-value { font-size: 20px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat-value.danger { color: var(--danger); }
+  .stat-value.success { color: var(--success); }
+
+  .toolbar {
+    display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;
+  }
+  .toolbar select, .toolbar input {
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 6px 10px;
+    border: 1px solid var(--border-mid);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  .toolbar select:focus, .toolbar input:focus { border-color: var(--accent); }
+  .toolbar input { min-width: 180px; }
+
+  .warn-box {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 7px;
+    padding: 9px 13px;
+    font-size: 12px;
+    color: var(--warn-text);
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .error-box {
+    background: var(--danger-light);
+    border: 1px solid #f5c0bb;
+    border-radius: 7px;
+    padding: 9px 13px;
+    font-size: 13px;
+    color: var(--danger);
+    margin-top: 10px;
+    display: none;
+  }
+
+  .tbl-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tbl-scroll { overflow-x: auto; max-height: 480px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  th {
+    padding: 9px 10px; text-align: left; font-family: var(--mono); font-size: 9px;
+    letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--border); background: var(--bg);
+    white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    cursor: pointer; user-select: none;
+  }
+  th:hover { color: var(--accent); background: #f0f0ec; }
+  th.sort-asc, th.sort-desc { color: var(--accent); }
+  th .sort-icon { display: inline-block; margin-left: 4px; opacity: 0.35; font-style: normal; }
+  th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; }
+  td { padding: 7px 10px; color: var(--text); border-bottom: 1px solid var(--border); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf7; }
+
+  th:nth-child(1) { width: 90px; }
+  th:nth-child(2) { width: 80px; }
+  th:nth-child(3) { width: 180px; }
+  th:nth-child(4) { width: 180px; }
+  th:nth-child(5) { width: 165px; }
+
+  td select {
+    font-family: var(--sans); font-size: 11px; padding: 3px 5px;
+    border: 1px solid var(--border-mid); border-radius: 5px;
+    background: var(--surface); color: var(--text); width: 100%; outline: none;
+  }
+  td select:focus { border-color: var(--accent); }
+  td select.unset { color: var(--muted); border-color: #f0c0bb; background: var(--danger-light); }
+
+  .amt-neg { color: var(--danger); font-family: var(--mono); font-size: 11px; font-weight: 500; }
+  .amt-pos { color: var(--success); font-family: var(--mono); font-size: 11px; font-weight: 500; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-primary {
+    padding: 11px 22px; background: var(--accent); color: #fff;
+    border: none; border-radius: 8px; font-family: var(--sans); font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #1560d8; }
+  .btn-secondary {
+    padding: 11px 18px; background: var(--surface); color: var(--muted);
+    border: 1px solid var(--border-mid); border-radius: 8px; font-family: var(--sans);
+    font-size: 13px; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--bg); }
+
+  .showing { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+  #result-section { display: none; }
+
+  @media (max-width: 600px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-tag">Accounting Tool</div>
+    <h1>Bank Statement <span>→</span> Xero Converter</h1>
+    <p class="header-sub">Supports Armalytix and Dext CSV exports. Upload your file — the format is detected automatically.</p>
+  </header>
+
+  <!-- Upload -->
+  <div id="upload-section" class="card">
+    <div class="card-header"><span class="card-label">Step 1 — Upload</span></div>
+    <div class="card-body">
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" accept=".csv" id="file-input" />
+        <div class="drop-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 3v10M6 9l4-4 4 4" stroke="#1a6ef5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 15v1a1.5 1.5 0 001.5 1.5h11A1.5 1.5 0 0017 16v-1" stroke="#1a6ef5" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="drop-title">Drop your bank export CSV here</div>
+        <div class="drop-sub">or click to browse &nbsp;·&nbsp; .csv files only</div>
+        <div class="formats-hint">
+          <span class="fmt-pill"><span class="dot-teal"></span>Armalytix (booking_date / merchantName)</span>
+          <span class="fmt-pill"><span class="dot-blue"></span>Dext (date / description / amount)</span>
+          <span class="fmt-pill"><span class="dot-blue"></span>Bank Direct (*Date / *Amount / Description)</span>
+        </div>
+      </div>
+      <div class="error-box" id="error-msg"></div>
+
+      <!-- Learn from Xero export -->
+      <div class="learn-section">
+        <div class="learn-header">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 3v5l3 2" stroke="#0a6a8a" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="learn-title">Update rules from a previous Xero export</span>
+        </div>
+        <div class="learn-sub">Drop a completed Xero bank import CSV (with AccountCode &amp; TaxType already filled in) to teach the tool new payees automatically.</div>
+        <div class="learn-drop" id="learn-drop">
+          <input type="file" accept=".csv" id="learn-input" />
+          📂 Drop a completed Xero CSV here, or click to browse
+        </div>
+        <div id="learn-msg" class="learn-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="result-section">
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Source file</div><div class="stat-value" id="s-file" style="font-size:12px;word-break:break-all;">—</div></div>
+      <div class="stat"><div class="stat-label">Transactions</div><div class="stat-value" id="s-total">—</div></div>
+      <div class="stat"><div class="stat-label">Categorised</div><div class="stat-value success" id="s-matched">—</div></div>
+      <div class="stat"><div class="stat-label">Needs review</div><div class="stat-value danger" id="s-unmatched">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">Step 2 — Review &amp; edit</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="showing" id="showing-count"></span>
+          <span id="format-badge-display"></span>
+        </div>
+      </div>
+      <div class="card-body" style="padding-bottom:1rem;">
+        <div class="toolbar">
+          <select id="filter-cat" onchange="renderTable()">
+            <option value="">All categories</option>
+            <option value="__unmatched__">Needs review</option>
+          </select>
+          <input id="filter-search" type="text" placeholder="Search description..." oninput="renderTable()">
+        </div>
+        <div class="warn-box" id="warn-box"></div>
+        <div class="tbl-wrap">
+          <div class="tbl-scroll">
+            <table>
+              <thead>
+                <tr id="tbl-head">
+                  <th data-col="date" onclick="handleSortClick(this)">Date<i class="sort-icon">↕</i></th>
+                  <th data-col="amount" onclick="handleSortClick(this)">Amount<i class="sort-icon">↕</i></th>
+                  <th data-col="desc" onclick="handleSortClick(this)">Description<i class="sort-icon">↕</i></th>
+                  <th data-col="account" onclick="handleSortClick(this)">Account code<i class="sort-icon">↕</i></th>
+                  <th data-col="tax" onclick="handleSortClick(this)">Tax type<i class="sort-icon">↕</i></th>
+                </tr>
+              </thead>
+              <tbody id="tbl-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-label">Step 3 — Export</span></div>
+      <div class="card-body">
+        <div class="btn-row">
+          <button class="btn-primary" onclick="downloadCSV()">⬇ Download xero_import.csv</button>
+          <button class="btn-secondary" onclick="resetTool()">Upload a different file</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ─── Account codes & tax types ────────────────────────────────────────────────
+const ACCOUNTS = [
+  {code:'200',name:'Chambers rent and expenses'},
+  {code:'201',name:'Professional indemnity insurance'},
+  {code:'202',name:'Professional subscriptions'},
+  {code:'203',name:'Telephone & Internet'},
+  {code:'204',name:'IT Software, consumables and maintenance'},
+  {code:'205',name:'Professional literature (Hard copies)'},
+  {code:'206',name:'Digital literature'},
+  {code:'207',name:'Postage, Freight & Courier'},
+  {code:'208',name:'Printing & Stationery'},
+  {code:'209',name:'Continuing Professional Development costs'},
+  {code:'210',name:'General Expenses'},
+  {code:'211',name:'Repairs & Maintenance'},
+  {code:'212',name:'Laundry and replacement of court attire'},
+  {code:'213',name:'Use of home as an office'},
+  {code:'300',name:'Travel - International'},
+  {code:'301',name:'Travel - National'},
+  {code:'302',name:'Motor Vehicle Expenses'},
+  {code:'303',name:'Interest on a car loan'},
+  {code:'304',name:'Fuel'},
+  {code:'305',name:'Parking'},
+  {code:'306',name:'Subsistence'},
+  {code:'400',name:'Accountancy and bookkeeping'},
+  {code:'401',name:'Devilling and professional assistance'},
+  {code:'402',name:'Advertising & Marketing'},
+  {code:'403',name:'Administrative or secretarial assistance'},
+  {code:'500',name:'Computer hardware'},
+  {code:'501',name:'Office furniture'},
+  {code:'502',name:'Wig and gown'},
+  {code:'600',name:'Income Tax provision'},
+  {code:'700',name:'Bank Fees'},
+  {code:'701',name:'Interest Paid'},
+  {code:'820',name:'VAT control'},
+  {code:'900',name:'Charitable and Political Donations'},
+  {code:'901',name:'Entertaining'},
+  {code:'410',name:'Rental expenses'},
+  {code:'999',name:'Personal usage adjustments'},
+];
+
+const TAX_TYPES = [
+  '20% (VAT on Expenses)',
+  '12.5% (VAT on Expenses)',
+  '5% (VAT on Expenses)',
+  'Exempt Expenses',
+  'Zero Rated Expenses',
+  'No VAT',
+  'VAT',
+];
+
+// ─── Rules (merged from both tools + learned from Xero export CSV) ────────────
+// Each rule: { kws: [lowercase keywords], account, tax, cat, learned? }
+let RULES = [
+  // ── VAT & Tax pots (Armalytix / Monzo) ──
+  { kws:['pot_0000ap0w7rff7hj','vat pot'], account:'820', tax:'No VAT', cat:'VAT pot', learned:true },
+  { kws:['pot_0000aevz6jwc3ql','income tax pot'], account:'600', tax:'No VAT', cat:'Income Tax pot', learned:true },
+
+  // ── Transport ──
+  { kws:['tfl travel','tfl unpaid','tfl.gov','transport for london'], account:'301', tax:'Zero Rated Expenses', cat:'Travel - National' },
+  { kws:['uber trip','https://help.ub','uber one membership'], account:'301', tax:'Zero Rated Expenses', cat:'Travel - National' },
+  { kws:['heathrow t5','44800 heathrow'], account:'301', tax:'Zero Rated Expenses', cat:'Travel - National' },
+  { kws:['flywire','avios'], account:'301', tax:'Exempt Expenses', cat:'Travel - National' },
+  { kws:['british airways'], account:'301', tax:'Exempt Expenses', cat:'Travel - National' },
+  { kws:['themarylebonehotel','eurostars'], account:'301', tax:'20% (VAT on Expenses)', cat:'Travel - National' },
+  { kws:['starbucks'], account:'301', tax:'20% (VAT on Expenses)', cat:'Travel - National' },
+
+  // ── Food & Drink (business) ──
+  { kws:['pret a manger','pret'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['caffe nero','caffè nero'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['sainsbury'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['itsu'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['m&s simply food','marks&spencer pla'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['common breads'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['barristers bar','sumup  *barristers'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['fringe and gin','zettle_*fringe'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['fleet street press'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:["leah's bistro"], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['chunkys sandwich bar'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['rio coffee house'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['craft brewed'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['parker cafe'], account:'301', tax:'Zero Rated Expenses', cat:'Food & Drink' },
+  { kws:['m&s archway'], account:'306', tax:'20% (VAT on Expenses)', cat:'Subsistence' },
+
+  // ── Subscriptions / Digital ──
+  { kws:['adamtooze.substack'], account:'204', tax:'Zero Rated Expenses', cat:'Subscriptions', learned:true },
+  { kws:['paypal *apple','paypal apple','apple.com/bill'], account:'204', tax:'20% (VAT on Expenses)', cat:'IT Software' },
+  { kws:['paypal *spotify'], account:'204', tax:'20% (VAT on Expenses)', cat:'IT Software' },
+  { kws:['global collect=times','times ne'], account:'206', tax:'Zero Rated Expenses', cat:'Digital literature' },
+
+  // ── Professional ──
+  { kws:['the bar council','brf'], account:'202', tax:'Exempt Expenses', cat:'Bar Council', learned:true },
+  { kws:['lcia'], account:'202', tax:'Exempt Expenses', cat:'Professional subscriptions' },
+
+  // ── Cleaning ──
+  { kws:['smart clean'], account:'212', tax:'Zero Rated Expenses', cat:'Cleaning', learned:true },
+
+  // ── Bank fees ──
+  { kws:['monzo business pro'], account:'700', tax:'No VAT', cat:'Bank Fees', learned:true },
+
+  // ── HMRC ──
+  { kws:['hmrc e vat','hmrc'], account:'820', tax:'VAT', cat:'HMRC VAT', learned:true },
+
+  // ── Payments to skip ──
+  { kws:['payment received'], account:'', tax:'', cat:'__payment__' },
+
+  // ── Personal (999) ──
+  { kws:['waitrose','london waitrose'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['wm morrisons','morrisons stores'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['aldi'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['lidl'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['tesco'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['haylaz','dojo'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['reformer'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['nedonboard'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['hc medspa','medspa'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['zacks','eye clinic'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['signature pharmacy','ryft*signature','ryft signature'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['helix pay'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['egyptexplor'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['sp we are kilo','we are kilo'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['lookfantastic'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['netflix'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['spotify'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['nakedwines'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['salisbury arms','oxford arms'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['brunch & crunch','brunch and crunch'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['phoenicia'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['garden centre'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['naz plant','flowers'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['b&q'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['sunshine garden'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['sameday doctor'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['dojo home marylebone'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['sp akt','akt london'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['westminster lpc'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['2368 holloway'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['boots the chemist','london boots','boots,'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['giraffe'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['avolta'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['marks and spencer','m&s tottenham'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['beauty pie'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['holland and barrett'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['john lewis'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['selfridges'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['sixty stor'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['zettle'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['amznmktplace','amazon'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['sp nothingfishy'], account:'999', tax:'No VAT', cat:'Personal' },
+  { kws:['james romford'], account:'999', tax:'No VAT', cat:'Personal' },
+];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let rows = [];
+let detectedFormat = ''; // 'armalytix' | 'dext' | 'bank-direct'
+
+// ─── Format detection ─────────────────────────────────────────────────────────
+function detectFormat(headers) {
+  const h = headers.map(x => x.toLowerCase().replace(/\*/g,''));
+  if (h.includes('booking_date') || h.includes('merchantname') || h.includes('cleansed_description')) return 'armalytix';
+  if (h.includes('date') && h.includes('description') && h.includes('amount')) return 'dext';
+  return 'unknown';
+}
+
+// ─── Categorisation ───────────────────────────────────────────────────────────
+function categorise(haystack) {
+  const h = haystack.toLowerCase();
+  for (const r of RULES) {
+    if (r.kws.some(k => h.includes(k))) {
+      return { account: r.account, tax: r.tax, cat: r.cat };
+    }
+  }
+  return { account: '', tax: '', cat: '__unmatched__' };
+}
+
+// ─── CSV parsing ──────────────────────────────────────────────────────────────
+function splitLine(line) {
+  const vals = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQ = !inQ; }
+    else if (line[i] === ',' && !inQ) { vals.push(cur); cur = ''; }
+    else { cur += line[i]; }
+  }
+  vals.push(cur);
+  return vals.map(v => v.replace(/^"|"$/g, '').trim());
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (!lines.length) return { headers: [], records: [] };
+  const rawHeaders = splitLine(lines[0]);
+  // Normalise headers: strip leading *, trim whitespace, lowercase
+  const headers = rawHeaders.map(h => h.trim().replace(/^\*/, '').toLowerCase());
+  const records = lines.slice(1).map(line => {
+    const vals = splitLine(line);
+    const row = {};
+    headers.forEach((h, i) => row[h] = vals[i] || '');
+    return row;
+  });
+  return { headers, records };
+}
+
+// ─── File handling ────────────────────────────────────────────────────────────
+function handleFile(file) {
+  if (!file.name.toLowerCase().endsWith('.csv')) { showError('Please upload a .csv file.'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const { headers, records } = parseCSV(e.target.result);
+      if (!records.length) { showError('No data found in file.'); return; }
+
+      const fmt = detectFormat(headers);
+      if (fmt === 'unknown') { showError('Format not recognised. Please upload an Armalytix, Dext, or Bank Direct CSV export.'); return; }
+      detectedFormat = fmt;
+
+      if (fmt === 'armalytix') {
+        rows = parseArmalytix(records);
+      } else {
+        rows = parseDext(records);
+      }
+
+      rows = rows.filter(r => r.cat !== '__payment__');
+      if (!rows.length) { showError('No transactions found — check the file format.'); return; }
+
+      populateCatFilter();
+      document.getElementById('s-file').textContent = file.name;
+
+      const badge = document.getElementById('format-badge-display');
+      const badgeLabels = { armalytix: '⬡ Armalytix', dext: '⬡ Dext', 'bank-direct': '⬡ Bank Direct' };
+      const badgeClasses = { armalytix: 'armalytix', dext: 'dext', 'bank-direct': 'dext' };
+      badge.innerHTML = '<span class="format-badge ' + (badgeClasses[fmt]||'dext') + '">' + (badgeLabels[fmt]||fmt) + '</span>';
+
+      document.getElementById('upload-section').style.display = 'none';
+      document.getElementById('result-section').style.display = 'block';
+      renderTable();
+    } catch(err) {
+      showError('Could not parse file. Please check it is a valid Armalytix or Dext CSV export.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseArmalytix(records) {
+  return records
+    .filter(r => r.booking_date || r.amount)
+    .map((r, idx) => {
+      const merchant = (r.merchantname || '').trim();
+      const cleansed = (r.cleansed_description || '').trim();
+      const desc     = (r.description || '').trim();
+      const payee    = merchant || cleansed || desc;
+      const haystack = payee + ' ' + (cleansed || desc);
+      const c = categorise(haystack);
+      return {
+        idx,
+        date:    (r.booking_date || '').trim(),
+        amount:  (parseFloat(r.amount) || 0).toFixed(2),
+        desc:    payee,
+        ref:     (r.reference || '').trim(),
+        account: c.account,
+        tax:     c.tax,
+        cat:     c.cat,
+      };
+    });
+}
+
+function parseDext(records) {
+  return records
+    .filter(r => r.date || r.amount)
+    .map((r, idx) => {
+      const desc = (r.description || '').trim();
+      const c = categorise(desc);
+      return {
+        idx,
+        date:    (r.date || '').trim(),
+        amount:  (r.amount || '').trim(),
+        desc,
+        ref:     (r.reference || r['cheque number'] || '').trim(),
+        account: c.account,
+        tax:     c.tax,
+        cat:     c.cat,
+      };
+    });
+}
+
+// ─── Learn from Xero export ───────────────────────────────────────────────────
+const learnDrop  = document.getElementById('learn-drop');
+const learnInput = document.getElementById('learn-input');
+const learnMsg   = document.getElementById('learn-msg');
+
+learnDrop.addEventListener('dragover', e => { e.preventDefault(); learnDrop.classList.add('over'); });
+learnDrop.addEventListener('dragleave', () => learnDrop.classList.remove('over'));
+learnDrop.addEventListener('drop', e => { e.preventDefault(); learnDrop.classList.remove('over'); if (e.dataTransfer.files[0]) learnFromFile(e.dataTransfer.files[0]); });
+learnInput.addEventListener('change', e => { if (e.target.files[0]) learnFromFile(e.target.files[0]); });
+
+function learnFromFile(file) {
+  if (!file.name.toLowerCase().endsWith('.csv')) { showLearnMsg('Please upload a .csv file.', true); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const { records } = parseCSV(e.target.result);
+      let added = 0, updated = 0;
+      const seen = new Set();
+      records.forEach(r => {
+        const payee = (r['payee'] || '').trim();
+        const code  = (r['accountcode'] || '').trim();
+        const tax   = (r['taxtype'] || '').trim();
+        if (!payee || !code || !tax) return;
+        const key = payee.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        const existIdx = RULES.findIndex(rule => rule.kws.includes(key));
+        if (existIdx >= 0) {
+          if (RULES[existIdx].account !== code || RULES[existIdx].tax !== tax) {
+            RULES[existIdx].account = code; RULES[existIdx].tax = tax; updated++;
+          }
+        } else {
+          RULES.unshift({ kws:[key], account:code, tax:tax, cat:payee, learned:true });
+          added++;
+        }
+      });
+
+      const parts = [];
+      if (added)   parts.push(added + ' new rule' + (added > 1 ? 's' : '') + ' added');
+      if (updated) parts.push(updated + ' rule' + (updated > 1 ? 's' : '') + ' updated');
+      if (!parts.length) parts.push('No changes — rules already up to date');
+      showLearnMsg('✓ ' + parts.join(', ') + '.', false);
+      if (rows.length) { reapplyRules(); renderTable(); updateStats(); }
+    } catch(err) {
+      showLearnMsg('Could not read file. Make sure it has Payee, *AccountCode and *TaxType columns.', true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showLearnMsg(msg, isErr) {
+  learnMsg.textContent = msg;
+  learnMsg.className = 'learn-msg ' + (isErr ? 'err' : 'ok');
+  learnMsg.style.display = 'block';
+}
+
+function reapplyRules() {
+  rows.forEach(r => {
+    const c = categorise(r.desc);
+    if (r.cat === '__unmatched__') { r.account = c.account; r.tax = c.tax; r.cat = c.cat; }
+  });
+}
+
+// ─── Sort state ───────────────────────────────────────────────────────────────
+let sortCol = 'date';
+let sortDir = 'asc';
+
+function handleSortClick(th) {
+  const col = th.dataset.col;
+  if (sortCol === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortCol = col;
+    sortDir = 'asc';
+  }
+  renderTable();
+}
+
+function updateSortHeaders() {
+  document.querySelectorAll('#tbl-head th').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    const icon = th.querySelector('.sort-icon');
+    if (!icon) return;
+    if (th.dataset.col === sortCol) {
+      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      icon.textContent = sortDir === 'asc' ? '↑' : '↓';
+    } else {
+      icon.textContent = '↕';
+    }
+  });
+}
+
+// ─── Table rendering ──────────────────────────────────────────────────────────
+function populateCatFilter() {
+  const sel = document.getElementById('filter-cat');
+  while (sel.options.length > 2) sel.remove(2);
+  const cats = [...new Set(rows.map(r => r.cat).filter(c => c !== '__unmatched__' && c !== '__payment__'))].sort();
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+}
+
+function renderTable() {
+  const catFilter = document.getElementById('filter-cat').value;
+  const search    = document.getElementById('filter-search').value.toLowerCase();
+  const tbody     = document.getElementById('tbl-body');
+  tbody.innerHTML = '';
+
+  const filtered = rows.filter(r => {
+    if (catFilter === '__unmatched__' && r.cat !== '__unmatched__') return false;
+    if (catFilter && catFilter !== '__unmatched__' && r.cat !== catFilter) return false;
+    if (search && !r.desc.toLowerCase().includes(search) && !r.date.includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('showing-count').textContent = filtered.length + ' of ' + rows.length + ' rows';
+
+  // Sort
+  filtered.sort((a, b) => {
+    let va = a[sortCol] || '', vb = b[sortCol] || '';
+    if (sortCol === 'amount') {
+      va = parseFloat(va) || 0; vb = parseFloat(vb) || 0;
+      return sortDir === 'asc' ? va - vb : vb - va;
+    }
+    // Date: parse DD/MM/YYYY
+    if (sortCol === 'date') {
+      const pd = s => { const p = s.split('/'); return p.length===3 ? new Date(p[2],p[1]-1,p[0]) : new Date(s); };
+      const da = pd(va), db = pd(vb);
+      return sortDir === 'asc' ? da - db : db - da;
+    }
+    va = va.toLowerCase(); vb = vb.toLowerCase();
+    return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+
+  updateSortHeaders();
+
+  filtered.forEach(r => {
+    const tr   = document.createElement('tr');
+    const amt  = parseFloat(r.amount);
+    const amtC = isNaN(amt) ? '' : (amt >= 0 ? 'amt-pos' : 'amt-neg');
+    const amtS = isNaN(amt) ? r.amount : ((amt >= 0 ? '+' : '') + amt.toFixed(2));
+
+    const acctSel = buildSelect('account', r.idx, r.account,
+      [['', '— select —'], ...ACCOUNTS.map(a => [a.code, a.code + ' — ' + a.name])]);
+    const taxSel  = buildSelect('tax', r.idx, r.tax,
+      [['', '— select —'], ...TAX_TYPES.map(t => [t, t])]);
+
+    tr.innerHTML =
+      '<td title="'+esc(r.date)+'">'+esc(r.date)+'</td>' +
+      '<td class="'+amtC+'">'+amtS+'</td>' +
+      '<td title="'+esc(r.desc)+'">'+esc(r.desc)+'</td>' +
+      '<td></td><td></td>';
+
+    tr.children[3].appendChild(acctSel);
+    tr.children[4].appendChild(taxSel);
+    tbody.appendChild(tr);
+  });
+
+  updateStats();
+}
+
+function buildSelect(field, idx, current, options) {
+  const sel = document.createElement('select');
+  sel.dataset.idx   = idx;
+  sel.dataset.field = field;
+  if (!current) sel.className = 'unset';
+  sel.onchange = () => { updateRow(idx, field, sel.value); sel.className = sel.value ? '' : 'unset'; };
+  options.forEach(([val, label]) => {
+    const o = document.createElement('option');
+    o.value = val; o.textContent = label;
+    if (val === current) o.selected = true;
+    sel.appendChild(o);
+  });
+  return sel;
+}
+
+// Tracks rows the user has manually edited — these won't be overwritten by propagation
+const manuallyEdited = new Set();
+
+// Auto-tax defaults by account code
+const ACCOUNT_TAX_DEFAULTS = {
+  '301': 'Zero Rated Expenses',
+  '999': 'No VAT',
+  '820': 'No VAT',
+  '600': 'No VAT',
+  '700': 'No VAT',
+  '202': 'Exempt Expenses',
+};
+
+function updateRow(idx, field, value) {
+  const r = rows.find(r => r.idx === idx);
+  if (!r) return;
+
+  if (field === 'account') r.account = value;
+  if (field === 'tax')     r.tax     = value;
+
+  // Auto-set tax type when a known account code is chosen (only if tax not yet set by user)
+  if (field === 'account' && ACCOUNT_TAX_DEFAULTS[value]) {
+    const autoTax = ACCOUNT_TAX_DEFAULTS[value];
+    r.tax = autoTax;
+    const taxSel = document.querySelector('select[data-idx="'+idx+'"][data-field="tax"]');
+    if (taxSel) { taxSel.value = autoTax; taxSel.className = ''; }
+  }
+
+  if (r.account && r.tax && r.cat === '__unmatched__') r.cat = 'manual';
+
+  // ── Propagate to siblings — but only if THIS row hasn't been individually overridden ──
+  // Mark this row as having been touched
+  const wasAlreadyEdited = manuallyEdited.has(idx);
+  manuallyEdited.add(idx);
+
+  const descNorm = r.desc.trim().toLowerCase();
+  // Siblings = same description, NOT already individually overridden by user
+  const siblings = rows.filter(s =>
+    s.idx !== idx &&
+    s.desc.trim().toLowerCase() === descNorm &&
+    !manuallyEdited.has(s.idx)   // skip rows user has already manually set
+  );
+
+  if (!wasAlreadyEdited && siblings.length > 0) {
+    // First edit on this row — propagate to unedited siblings
+    siblings.forEach(s => {
+      if (field === 'account') {
+        s.account = value;
+        if (ACCOUNT_TAX_DEFAULTS[value]) {
+          s.tax = ACCOUNT_TAX_DEFAULTS[value];
+        }
+      }
+      if (field === 'tax') s.tax = value;
+      if (s.account && s.tax && s.cat === '__unmatched__') s.cat = 'manual';
+
+      const aSel = document.querySelector('select[data-idx="'+s.idx+'"][data-field="account"]');
+      const tSel = document.querySelector('select[data-idx="'+s.idx+'"][data-field="tax"]');
+      if (aSel) { aSel.value = s.account; aSel.className = s.account ? '' : 'unset'; }
+      if (tSel) { tSel.value = s.tax;     tSel.className = s.tax     ? '' : 'unset'; }
+    });
+
+    showToast('Applied to ' + siblings.length + ' other "' + r.desc + '" row' + (siblings.length > 1 ? 's' : '') + '. Further changes on this row won\'t affect the others.');
+  } else if (wasAlreadyEdited) {
+    // Subsequent edit — only affects this row
+    showToast('"' + r.desc + '" updated — other rows unchanged.');
+  }
+
+  updateStats();
+}
+
+// ── Toast notification ────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  let toast = document.getElementById('propagate-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'propagate-toast';
+    toast.style.cssText = [
+      'position:fixed','bottom:24px','left:50%','transform:translateX(-50%)',
+      'background:#1a1916','color:#fff','font-family:var(--sans)','font-size:12px',
+      'padding:10px 18px','border-radius:8px','box-shadow:0 4px 16px rgba(0,0,0,0.25)',
+      'z-index:9999','pointer-events:none','opacity:0',
+      'transition:opacity 0.2s ease','max-width:90vw','text-align:center'
+    ].join(';');
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 3500);
+}
+
+function updateStats() {
+  const unmatched = rows.filter(r => !r.account || !r.tax).length;
+  const matched   = rows.length - unmatched;
+  document.getElementById('s-total').textContent     = rows.length;
+  document.getElementById('s-matched').textContent   = matched;
+  document.getElementById('s-unmatched').textContent = unmatched;
+  const wb = document.getElementById('warn-box');
+  if (unmatched > 0) {
+    wb.style.display = 'block';
+    wb.textContent = unmatched + ' transaction' + (unmatched !== 1 ? 's' : '') + ' still need an account code and/or tax type. Use the "Needs review" filter to find them.';
+  } else {
+    wb.style.display = 'none';
+  }
+}
+
+// ─── Download ─────────────────────────────────────────────────────────────────
+function downloadCSV() {
+  const headers = ['*Date','*Amount','Payee','Description','Reference','*AccountCode','*TaxType'];
+  const lines   = [headers.map(h => '"'+h+'"').join(',')];
+  rows.forEach(r => {
+    lines.push([r.date, r.amount, r.desc, r.desc, r.ref||'', r.account, r.tax]
+      .map(v => '"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+  });
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'xero_import.csv';
+  a.click();
+}
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+function resetTool() {
+  rows = []; detectedFormat = '';
+  manuallyEdited.clear();
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('upload-section').style.display = 'block';
+  document.getElementById('file-input').value = '';
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('filter-search').value = '';
+  document.getElementById('filter-cat').value = '';
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.style.display = 'block'; }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── Event listeners ──────────────────────────────────────────────────────────
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+</script>
+</body>
+</html>
